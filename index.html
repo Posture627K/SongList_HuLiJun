@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>歌曲搜索页面</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        #searchInput {
+            width: 200px;
+            padding: 5px;
+        }
+
+        #genreSelect {
+            padding: 5px;
+            margin-left: 10px;
+        }
+
+
+        .genre-header img {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .song-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+            justify-content: flex-start;
+        }
+
+        .song-card {
+            width: 180px; /* 默认窄屏一行两首 */
+            border: 1px solid #b3b3b3;
+            padding: 10px;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) {
+            .song-card {
+                width: 220px; /* 宽屏一行四首 */
+            }
+        }
+
+        .genre-section {
+            margin-bottom: 40px; /* 每个风格之间的空隙 */
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 30px 0 10px 0;
+        }
+
+
+    </style>
+</head>
+<body>
+
+<h1>歌曲搜索</h1>
+
+<input type="text" id="searchInput" placeholder="搜索歌曲名">
+<select id="genreSelect">
+    <option value="">-- 所有风格 --</option>
+    <option value="流行">流行</option>
+    <option value="古风">古风</option>
+    <option value="戏腔">戏腔</option>
+    <option value="经典">经典</option>
+    <option value="搞笑">搞笑</option>
+    <option value="民族">民族</option>
+    <option value="高音">高音</option>
+    <option value="外语">外语</option>
+</select>
+
+<div id="results"></div>
+
+<script>
+    async function fetchSongs(keyword = "") {
+        const response = await fetch(`http://localhost:8080/api/songs/search?keyword=${encodeURIComponent(keyword)}`);
+        return await response.json();
+    }
+
+    function groupByGenre(songs) {
+        const genreMap = {};
+        songs.forEach(song => {
+            const genre = song.genre || "未分类";
+            if (!genreMap[genre]) genreMap[genre] = [];
+            genreMap[genre].push(song);
+        });
+        return genreMap;
+    }
+
+    function renderGroupedSongs(songs, filterGenre = "") {
+        const container = document.getElementById("results");
+        container.innerHTML = "";
+
+        const genreGroups = groupByGenre(songs);
+        for (const genre in genreGroups) {
+            if (filterGenre && genre !== filterGenre) continue;
+
+            const section = document.createElement("div");
+            section.className = "genre-section";
+
+            const header = document.createElement("div");
+            header.className = "genre-header";
+
+            const img = document.createElement("img");
+            img.src = `images/genre/${genre}.png`;
+            img.alt = genre;
+            img.onerror = () => img.style.display = "none";
+
+            const title = document.createElement("h2");
+
+            header.appendChild(img);
+            header.appendChild(title);
+            section.appendChild(header);
+
+            const songList = document.createElement("div");
+            songList.className = "song-list";
+
+            genreGroups[genre].forEach(song => {
+                const card = document.createElement("div");
+                card.className = "song-card";
+                card.textContent = `${song.title}`;
+                songList.appendChild(card);
+            });
+
+            section.appendChild(songList);
+
+            // 分割线
+            const hr = document.createElement("hr");
+            hr.className = "divider";
+            section.appendChild(hr);
+
+            container.appendChild(section);
+        }
+    }
+
+
+    async function refreshSongs() {
+        const keyword = document.getElementById("searchInput").value.trim();
+        const allSongs = await fetchSongs(keyword);
+
+        const selectedGenre = document.getElementById("genreSelect").value;
+        renderGroupedSongs(allSongs, selectedGenre);
+    }
+
+    document.getElementById("searchInput").addEventListener("input", refreshSongs);
+    document.getElementById("genreSelect").addEventListener("change", refreshSongs);
+
+    // 初始加载
+    window.onload = refreshSongs;
+</script>
+</body>
+</html>

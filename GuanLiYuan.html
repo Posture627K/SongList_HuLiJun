@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>歌曲管理面板</title>
+</head>
+<body>
+<h1>🎧 歌曲管理面板</h1>
+
+<!-- 添加歌曲表单 -->
+<h2>添加歌曲</h2>
+<form id="addForm">
+    <input type="text" id="title" placeholder="歌名" required>
+    <input type="text" id="artist" placeholder="歌手">
+    <input type="text" id="genre" placeholder="风格" required>
+    <button type="submit">添加歌曲</button>
+</form>
+
+<hr>
+
+<!-- 删除歌曲区域 -->
+<h2>已添加歌曲</h2>
+<button onclick="loadSongs()">刷新</button>
+<ul id="songList"></ul>
+
+<script>
+    // 添加歌曲
+    document.getElementById("addForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const song = {
+            title: document.getElementById("title").value,
+            artist: document.getElementById("artist").value,
+            genre: document.getElementById("genre").value
+        };
+
+        try {
+            await fetch("http://localhost:8080/api/songs/add", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(song)
+            });
+            alert("✅ 歌曲添加成功！");
+            // 清空输入框
+            document.getElementById("addForm").reset();
+            loadSongs();
+        } catch (error) {
+            alert("❌ 添加失败：" + error);
+        }
+    });
+
+    // 加载歌曲并显示“删除”按钮
+    async function loadSongs() {
+        try {
+            const res = await fetch("http://localhost:8080/api/songs/search?keyword=");
+            const songs = await res.json();
+            const list = document.getElementById("songList");
+            list.innerHTML = "";
+
+            if (songs.length === 0) {
+                list.innerHTML = "<li>暂无歌曲。</li>";
+                return;
+            }
+
+            songs.forEach(song => {
+                const li = document.createElement("li");
+                li.textContent = `${song.title} - ${song.artist} [${song.genre ?? "无风格"}]`;
+
+                const btn = document.createElement("button");
+                btn.textContent = "删除";
+                btn.style.marginLeft = "10px";
+                btn.onclick = async () => {
+                    if (confirm(`确定要删除《${song.title}》吗？`)) {
+                        await fetch(`http://localhost:8080/api/songs/delete?id=${song.id}`, {
+                            method: "DELETE"
+                        });
+                        loadSongs(); // 刷新
+                    }
+                };
+
+                li.appendChild(btn);
+                list.appendChild(li);
+            });
+        } catch (error) {
+            alert("❌ 加载歌曲失败：" + error);
+        }
+    }
+
+    // 页面加载完成时自动加载
+    window.onload = loadSongs;
+</script>
+</body>
+</html>
